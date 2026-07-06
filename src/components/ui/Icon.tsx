@@ -1,45 +1,58 @@
 // src/components/ui/Icon.tsx
 import React from 'react';
-import { Text, StyleSheet } from 'react-native';
+import {
+  Settings,
+  Home,
+  User,
+  Bell,
+  Search,
+  PlusCircle,
+  LucideIcon,
+  Moon,
+  Sunset,
+  Sunrise,
+  Rainbow,
+  SunIcon,
+  SunDim,
+  PhoneOff,
+} from 'lucide-react-native';
+import { useTheme } from '../../hooks/useTheme';
 
 interface IconProps {
-    name: string;
-    size?: number;
-    color?: string;
+  name: string;
+  size?: number;
+  color?: string;
 }
 
-/**
- * Placeholder Icon component
- * Replace with react-native-vector-icons or your preferred icon library
- */
-export const Icon: React.FC<IconProps> = ({ name, size = 24, color = '#000' }) => {
-    // Map icon names to emoji (temporary placeholder)
-    const iconMap: Record<string, string> = {
-        'home': '🏠',
-        'home-outline': '🏠',
-        'search': '🔍',
-        'search-outline': '🔍',
-        'add-circle': '➕',
-        'add-circle-outline': '➕',
-        'notifications': '🔔',
-        'notifications-outline': '🔔',
-        'person': '👤',
-        'person-outline': '👤',
-    };
+export const Icon: React.FC<IconProps> = ({ name, size = 24, color }) => {
+  const { colors } = useTheme();
+  const iconColor = color || colors.text;
 
-    const icon = iconMap[name] || '•';
+  const iconMap: Record<string, LucideIcon> = {
+    home: Home,
+    'home-outline': Home,
+    settings: Settings,
+    'settings-outline': Settings,
+    person: User,
+    'person-outline': User,
+    notifications: Bell,
+    'notifications-outline': Bell,
+    search: Search,
+    'search-outline': Search,
+    'add-circle': PlusCircle,
+    'add-circle-outline': PlusCircle,
+    fajr: Rainbow,
+    sunrise: Sunrise,
+    dhuhr: SunIcon,
+    asr: SunDim,
+    maghrib: Sunset,
+    isha: Moon,
+    phoneOff: PhoneOff,
+  };
 
-    return (
-        <Text style={[styles.icon, { fontSize: size, color }]}>
-            {icon}
-        </Text>
-    );
+  const IconComponent = iconMap[name] || Home;
+
+  return <IconComponent size={size} color={iconColor} />;
 };
-
-const styles = StyleSheet.create({
-    icon: {
-        textAlign: 'center',
-    },
-});
 
 export default Icon;

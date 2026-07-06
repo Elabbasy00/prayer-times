@@ -1,38 +1,67 @@
 // src/utils/mmkv.ts
-import { MMKV } from 'react-native-mmkv';
+import { createMMKV, MMKV } from 'react-native-mmkv';
+import { StateStorage } from 'zustand/middleware';
 
 /**
- * Singleton MMKV instance
- * This prevents multiple instances from being created
+ * MMKV instance with a persistent ID.
  */
 let storage: MMKV;
+let isPersistent = true;
 
 try {
-    storage = new MMKV({
-        id: 'mobile-starter-storage',
-        encryptionKey: 'your-encryption-key-here', // Optional: for encrypted storage
-    });
+  storage = createMMKV({
+    id: 'prayer-times-data-v1',
+    encryptionKey: 'prayer-times-data-v1',
+    mode: 'multi-process',
+    readOnly: false,
+  });
 } catch (error) {
-    console.warn(
-        '⚠️ MMKV initialization failed. This usually happens when using Chrome Remote Debugger.',
-        '\n💡 Solution: Disable remote debugging or use Flipper instead.',
-        '\n📱 The app will work but without persistent storage during debugging.',
-        '\nError:',
-        error
-    );
+  isPersistent = false;
+  console.log('MMKV init failed, using mock storage');
 
-    // Create a mock MMKV object for development
-    storage = {
-        set: () => { },
-        getString: () => undefined,
-        getNumber: () => undefined,
-        getBoolean: () => undefined,
-        contains: () => false,
-        delete: () => { },
-        clearAll: () => { },
-        getAllKeys: () => [],
-    } as any;
+  const mockStorage: Record<string, string> = {};
+  storage = {
+    set: (key: string, value: string | number | boolean) => {
+      mockStorage[key] = value.toString();
+    },
+    getString: (key: string) => mockStorage[key],
+    getNumber: (key: string) => {
+      const val = mockStorage[key];
+      return val ? parseFloat(val) : undefined;
+    },
+    getBoolean: (key: string) => mockStorage[key] === 'true',
+    contains: (key: string) => key in mockStorage,
+    delete: (key: string) => {
+      delete mockStorage[key];
+    },
+    clearAll: () => {
+      Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+    },
+    getAllKeys: () => Object.keys(mockStorage),
+    addOnValueChangedListener: () => ({ remove: () => {} }),
+  } as any;
 }
+
+/**
+ * Returns whether the current storage is persistent.
+ */
+export const getIsPersistent = () => isPersistent;
+
+/**
+ * Centralized Zustand storage adapter for MMKV.
+ */
+export const zustandStorage: StateStorage = {
+  setItem: (name, value) => {
+    return storage.set(name, value);
+  },
+  getItem: name => {
+    const value = storage.getString(name);
+    return value ?? null;
+  },
+  removeItem: name => {
+    return storage.remove(name);
+  },
+};
 
 export { storage };
 export default storage;

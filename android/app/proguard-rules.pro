@@ -8,3 +8,15 @@
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
 # Add any project specific keep options here:
+
+# react-native-mmkv
+-keep class com.reactnativemmkv.** { *; }
+-keep interface com.reactnativemmkv.** { *; }
+
+# Zustand/Persistence internal types if needed (usually handled by -keepattributes)
+-keepattributes *Annotation*, Signature, InnerClasses
+
+# Ensure native modules are not stripped
+-keep class com.facebook.react.bridge.NativeModule { *; }
+-keep class com.facebook.react.bridge.ReactContext { *; }
+-keep class com.facebook.react.bridge.ReactApplicationContext { *; }

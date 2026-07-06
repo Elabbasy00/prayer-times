@@ -1,4 +1,5 @@
 {
   "name": "app",
-  "displayName": "app"
+  "displayName": "Prayer Times",
+  "orientation": "default"
 }

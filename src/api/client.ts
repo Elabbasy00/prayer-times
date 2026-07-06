@@ -1,12 +1,8 @@
-// src/api/client.ts
+
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import storage from '../utils/mmkv';
-import type { User, RegisterDTO } from '../types/auth';
-import type { Product, ProductFilters, ProductCreateDTO } from '../types/product';
-
-// The original `const storage = new MMKV();` is replaced by the import `import storage from '../utils/mmkv';`
 
 // Environment configuration
 const ENV = {
@@ -55,7 +51,7 @@ apiClient.interceptors.request.use(
 
     return config;
   },
-  error => Promise.reject(error),
+  
 );
 
 // Response interceptor
@@ -139,35 +135,4 @@ apiClient.interceptors.response.use(
   },
 );
 
-// API endpoints module
-export const api = {
-  auth: {
-    login: (email: string, password: string) =>
-      apiClient.post('/auth/login/', { email, password }),
 
-    register: (data: RegisterDTO) => apiClient.post('/auth/register/', data),
-
-    logout: () => apiClient.post('/auth/logout/'),
-
-    verifyToken: () => apiClient.get('/auth/verify/'),
-  },
-
-  users: {
-    getProfile: () => apiClient.get('/users/profile/'),
-    updateProfile: (data: Partial<User>) =>
-      apiClient.patch('/users/profile/', data),
-    uploadAvatar: (formData: FormData) =>
-      apiClient.post('/users/avatar/', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }),
-  },
-
-  // Add your Django app endpoints
-  products: {
-    list: (params?: ProductFilters) => apiClient.get('/products/', { params }),
-    create: (data: ProductCreateDTO) => apiClient.post('/products/', data),
-    update: (id: number, data: Partial<Product>) =>
-      apiClient.patch(`/products/${id}/`, data),
-    delete: (id: number) => apiClient.delete(`/products/${id}/`),
-  },
-};

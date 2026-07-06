@@ -15,6 +15,10 @@ export type RootStackParamList = {
   VideoPlayer: { videoUrl: string } | undefined;
   MapView: { location?: { latitude: number; longitude: number } } | undefined;
   ActionSheet: undefined;
+  
+  // New Routes
+  Home: undefined;
+  settings: undefined;
 };
 
 export type TabParamList = {
@@ -23,6 +27,7 @@ export type TabParamList = {
   Create: undefined;
   Notifications: undefined;
   Profile: undefined;
+  Settings: undefined;
 };
 
 export type DrawerParamList = {
