@@ -16,10 +16,10 @@ interface PrayerState {
 }
 
 const DEFAULT_LOCATION: Location = {
-  latitude: 21.4225, // Mecca
-  longitude: 39.8262,
-  city: 'Mecca',
-  country: 'Saudi Arabia',
+  latitude: 30.5247136, // Mecca
+  longitude: 31.0784187,
+  city: 'Menofia',
+  country: 'Egypt',
   manual: true,
 };
 

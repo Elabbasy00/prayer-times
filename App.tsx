@@ -14,11 +14,14 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import Toast from 'react-native-toast-message';
 
 import KeepAwake from '@sayem314/react-native-keep-awake';
+import { usePrayerNotificationRuntime } from './src/hooks/usePrayerNotificationRuntime';
 
 function App() {
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
   const [isReady, setIsReady] = useState(false);
+
+  usePrayerNotificationRuntime();
 
   const loadLocales = async () => {
     try {
@@ -34,19 +37,12 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // if (hasHydratedPrayer && hasHydratedUI) {
-    // Small timeout to ensure stores are fully ready for consumption
-    // const timer = setTimeout(() => {
     setIsReady(true);
     SplashScreen.hide();
-    // }, 100);
-    // return () => clearTimeout(timer);
+
     // }
   }, []);
 
-  // DO NOT render the main app structure until hydrated.
-  // This prevents components from initializing with default values and
-  // potentially triggering logic that overwrites the saved ones.
   if (!isReady) {
     return (
       <View

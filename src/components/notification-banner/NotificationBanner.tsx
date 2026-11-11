@@ -1,9 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { hs } from '../../config/theme';
 import { useTheme } from '../../hooks';
 import { Icon } from '../ui/Icon';
-import { hs } from '../../config/theme';
 
 interface NotificationBannerProps {
   message: string;
@@ -18,100 +19,149 @@ export const NotificationBanner: React.FC<NotificationBannerProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const { colors, spacing, typography } = useTheme();
-  const [fadeAnim] = React.useState(new Animated.Value(0));
-  const [shakeAnim] = React.useState(new Animated.Value(0));
 
-  React.useEffect(() => {
-    // Fade in/out
-    Animated.timing(fadeAnim, {
-      toValue: visible ? 1 : 0,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
+  const opacity = useRef(new Animated.Value(0)).current;
+  const slideY = useRef(new Animated.Value(100)).current;
+  const shakeX = useRef(new Animated.Value(0)).current;
+  const shakeLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
-    // Shake animation (flushing)
+  useEffect(() => {
+    opacity.stopAnimation();
+    slideY.stopAnimation();
+    shakeLoopRef.current?.stop();
+    shakeLoopRef.current = null;
+    shakeX.setValue(0);
+
     if (visible) {
-      Animated.loop(
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+          isInteraction: false,
+        }),
+        Animated.timing(slideY, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+          isInteraction: false,
+        }),
+      ]).start();
+
+      const shakeLoop = Animated.loop(
         Animated.sequence([
-          Animated.timing(shakeAnim, {
+          Animated.timing(shakeX, {
             toValue: 10,
             duration: 50,
             useNativeDriver: true,
+            isInteraction: false,
           }),
-          Animated.timing(shakeAnim, {
+          Animated.timing(shakeX, {
             toValue: -10,
             duration: 50,
             useNativeDriver: true,
+            isInteraction: false,
           }),
-          Animated.timing(shakeAnim, {
+          Animated.timing(shakeX, {
             toValue: 10,
             duration: 50,
             useNativeDriver: true,
+            isInteraction: false,
           }),
-          Animated.timing(shakeAnim, {
+          Animated.timing(shakeX, {
             toValue: 0,
             duration: 50,
             useNativeDriver: true,
+            isInteraction: false,
           }),
-          Animated.delay(1500), // Shake every 1.5s
+          Animated.delay(1500),
         ]),
-      ).start();
-    } else {
-      shakeAnim.setValue(0);
-    }
-  }, [visible, fadeAnim, shakeAnim]);
+      );
 
-  if (!visible && (fadeAnim as any)._value === 0) return null;
+      shakeLoopRef.current = shakeLoop;
+      shakeLoop.start();
+    } else {
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+          isInteraction: false,
+        }),
+        Animated.timing(slideY, {
+          toValue: 100,
+          duration: 300,
+          useNativeDriver: true,
+          isInteraction: false,
+        }),
+      ]).start();
+    }
+
+    return () => {
+      opacity.stopAnimation();
+      slideY.stopAnimation();
+      shakeLoopRef.current?.stop();
+      shakeLoopRef.current = null;
+      shakeX.stopAnimation();
+      shakeX.setValue(0);
+    };
+  }, [visible, opacity, slideY, shakeX]);
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          backgroundColor: colors.error, // Vibrant Green
-          borderTopColor: colors.primaryLight + '40',
-          paddingBottom: insets.bottom,
-          opacity: fadeAnim,
-          transform: [
-            {
-              translateY: fadeAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [100, 0],
-              }),
-            },
-            { translateX: shakeAnim },
-          ],
-        },
-      ]}
-    >
-      <View style={styles.content}>
-        <Icon name={icon as any} size={24} color={colors.textOnPrimary} />
-        <Text
+    <View pointerEvents="none" style={styles.bottomAnchor}>
+      <Animated.View
+        style={[
+          styles.banner,
+          {
+            backgroundColor: colors.error,
+            borderTopColor: `${colors.primaryLight}40`,
+            paddingBottom: insets.bottom,
+            opacity,
+            transform: [{ translateY: slideY }],
+          },
+        ]}
+      >
+        <Animated.View
           style={[
-            styles.text,
+            styles.content,
             {
-              color: colors.textOnPrimary,
-              fontFamily: typography.fontFamily.bold,
-              fontSize: typography.fontSize.md,
-              marginLeft: spacing.sm,
+              transform: [{ translateX: shakeX }],
             },
           ]}
         >
-          {message}
-        </Text>
-      </View>
-    </Animated.View>
+          <Icon name={icon as any} size={24} color={colors.textOnPrimary} />
+
+          <Text
+            style={[
+              styles.text,
+              {
+                color: colors.textOnPrimary,
+                fontFamily: typography.fontFamily.bold,
+                fontSize: typography.fontSize.md,
+                marginLeft: spacing.sm,
+              },
+            ]}
+          >
+            {message}
+          </Text>
+        </Animated.View>
+      </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  bottomAnchor: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopWidth: 1,
     zIndex: 1000,
+    elevation: 1000,
+  },
+  banner: {
+    width: '100%',
+    borderTopWidth: 1,
   },
   content: {
     flexDirection: 'row',

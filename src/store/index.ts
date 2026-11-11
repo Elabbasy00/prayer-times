@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { zustandStorage } from '../utils/mmkv';
+
 import type { Notification } from '../types/ui';
 
 // UI Store

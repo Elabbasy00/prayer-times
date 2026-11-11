@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, ImageBackground, ScrollView } from 'react-native';
 import moment from 'moment';
 
@@ -9,11 +9,6 @@ import { PrayerTimeEntry } from '../types/prayer';
 import { TRANSLATIONS, Language } from '../constants/translations';
 import { useTheme } from '../hooks/useTheme';
 import { useAutoLocation } from '../hooks/useAutoLocation';
-import {
-  schedulePrayerNotifications,
-  requestNotificationPermission,
-} from '../services/notifications';
-import { getTranslatedName } from '../utils/formatters';
 
 import DateHeader from '../components/date-header/DateHeader';
 import PrayerTables from '../components/prayer-tables/PrayerTables';
@@ -48,76 +43,46 @@ export const PrayerHomeScreen = () => {
   );
   const [phase, setPhase] = useState<'waiting' | 'adhan' | 'iqama'>('waiting');
 
-  const loadData = async () => {
+  const refreshPrayerDisplay = useCallback(() => {
     const now = new Date();
     const times = getPrayerTimes(now, location, settings, language);
+
     const sunnahTimes = times.filter(
       item => item.name === 'Duha' || item.name === 'Sunrise',
     );
-    const prayers = times.filter(
+
+    const dailyPrayers = times.filter(
       item => item.name !== 'Duha' && item.name !== 'Sunrise',
     );
-    const next = getNextPrayer(prayers, location, settings, language);
 
-    setPrayers(prayers);
-    setSunnahPrayer(sunnahTimes || null);
-    setNextPrayer(next?.next || null);
-    setCurrentPrayer(next?.current || null);
-    setPhase(next?.phase || 'waiting');
+    const next = getNextPrayer(dailyPrayers, location, settings, language);
 
-    // Schedule notifications for Today AND Tomorrow
-    try {
-      const hasPermission = await requestNotificationPermission();
-      if (hasPermission) {
-        // For notifications we need the ORIGINAL un-offset times
-        // because Android triggers fire based on system clock.
-        // The offset is display-only.
-        const notifSettings = {
-          ...settings,
-          useManualTimezone: false,
-        };
-
-        const todayNotifTimes = getPrayerTimes(
-          now,
-          location,
-          notifSettings,
-          language,
-        );
-
-        // Get tomorrow's times so notifications work across midnight
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowNotifTimes = getPrayerTimes(
-          tomorrow,
-          location,
-          notifSettings,
-          language,
-        );
-
-        // Schedule notifications for both today and tomorrow
-        await schedulePrayerNotifications(
-          [...todayNotifTimes, ...tomorrowNotifTimes],
-          {
-            adhanTitle: t.adhanNotificationTitle,
-            iqamaTitle: t.iqamaNotificationTitle,
-            adhanBody: (name: string) =>
-              `${t.adhanNotificationBody} ${getTranslatedName(t, name)}`,
-            iqamaBody: (name: string) =>
-              `${t.iqamaNotificationBody} ${getTranslatedName(t, name)}`,
-          },
-        );
-      }
-    } catch (error) {
-      console.log('Notification scheduling error:', error);
-    }
-  };
+    setPrayers(dailyPrayers);
+    setSunnahPrayer(sunnahTimes);
+    setNextPrayer(next?.next ?? null);
+    setCurrentPrayer(next?.current ?? null);
+    setPhase(next?.phase ?? 'waiting');
+  }, [location, settings, language]);
 
   useEffect(() => {
-    loadData();
+    refreshPrayerDisplay();
 
-    const interval = setInterval(loadData, 60000);
-    return () => clearInterval(interval);
-  }, [location, settings, language]);
+    const displayInterval = setInterval(refreshPrayerDisplay, 60_000);
+
+    return () => clearInterval(displayInterval);
+  }, [refreshPrayerDisplay]);
+
+  const isIqamaBannerVisible = (() => {
+    if (phase !== 'waiting' || !currentPrayer?.iqama) {
+      return false;
+    }
+
+    const now = moment();
+    const iqamaTime = moment(currentPrayer.iqama);
+    const endTime = moment(currentPrayer.iqama).add(2, 'minutes');
+
+    return now.isSameOrAfter(iqamaTime) && now.isBefore(endTime);
+  })();
 
   const image = require('../assets/images/bg.png');
 
@@ -133,32 +98,18 @@ export const PrayerHomeScreen = () => {
           <CurrentPrayCard
             nextPrayer={nextPrayer!}
             phase={phase}
-            onTimerEnd={loadData}
+            onTimerEnd={refreshPrayerDisplay}
           />
           <PrayerTables prayers={prayers} currentPrayer={currentPrayer} />
           <SunnahTable prayers={sunnahPrayer!} />
           <AthkerMarquee data={ATHKER_DATA} />
         </ScrollView>
 
-        {(() => {
-          if (phase !== 'waiting' || !currentPrayer?.iqama) return null;
-
-          const now = moment();
-          const iqamaTime = moment(currentPrayer.iqama);
-          const endTime = moment(currentPrayer.iqama).add(2, 'minutes');
-
-          // Show "Close your phone" if we are in the 15-minute window after iqama
-          if (now.isAfter(iqamaTime) && now.isBefore(endTime)) {
-            return (
-              <NotificationBanner
-                visible={true}
-                message={t.closeYourPhone}
-                icon="phoneOff"
-              />
-            );
-          }
-          return null;
-        })()}
+        <NotificationBanner
+          visible={isIqamaBannerVisible}
+          message={t.closeYourPhone}
+          icon="phoneOff"
+        />
       </ImageBackground>
     </View>
   );

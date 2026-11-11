@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { hs, vs } from '../../config/theme';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
@@ -22,10 +22,11 @@ function CurrentPrayCard({
   const { language } = useUIStore();
   const [timeLeft, setTimeLeft] = useState('');
   const t = TRANSLATIONS[language as Language] || TRANSLATIONS.en;
+  const timerEndHandledRef = useRef(false);
 
   useEffect(() => {
     if (!nextPrayer) return;
-
+    timerEndHandledRef.current = false;
     const targetTime =
       phase === 'iqama' && nextPrayer.iqama
         ? moment(nextPrayer.iqama)
@@ -36,7 +37,12 @@ function CurrentPrayCard({
 
       if (diff <= 0) {
         setTimeLeft('00:00:00');
-        onTimerEnd?.();
+
+        if (!timerEndHandledRef.current) {
+          timerEndHandledRef.current = true;
+          onTimerEnd?.();
+        }
+
         return;
       }
 
@@ -50,7 +56,7 @@ function CurrentPrayCard({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [nextPrayer, phase]);
+  }, [nextPrayer, phase, onTimerEnd]);
 
   // Determine label based on phase
   const timerLabel = getTranslatedName(t, 'remaining');

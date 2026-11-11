@@ -20,6 +20,13 @@ import { CalculationMethod } from '../types/prayer';
 import { TRANSLATIONS, Language } from '../constants/translations';
 import { useTheme } from '../hooks/useTheme';
 import { useNavigation } from '@react-navigation/native';
+import {
+  displayPrayerSoundTest,
+  getPrayerNotificationDeviceStatus,
+  openPrayerAlarmSettings,
+  openPrayerChannelSettings,
+} from '../services/notifications';
+import { getPrayerDiagnostics } from '../services/prayerDiagnostics';
 
 const SettingsSection = ({
   title,
@@ -99,6 +106,50 @@ export const PrayerSettingsScreen = () => {
   const navigation = useNavigation();
   // Ordered list of iqama prayers for consistent rendering
   const iqamaPrayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const;
+
+  const handleShowNotificationStatus = async () => {
+    try {
+      const status = await getPrayerNotificationDeviceStatus();
+
+      const coverage = status.coverageUntil
+        ? new Date(status.coverageUntil).toLocaleString()
+        : 'None';
+
+      Alert.alert(
+        t.notificationDiagnostics,
+        [
+          `Notifications authorized: ${status.notificationsAuthorized}`,
+          `Exact alarms authorized: ${status.exactAlarmsAuthorized}`,
+          `Pending prayer alerts: ${status.pendingPrayerCount}`,
+          `Schedule coverage: ${coverage}`,
+          `Adhan channel blocked: ${status.adhanChannelBlocked}`,
+          `Iqama channel blocked: ${status.iqamaChannelBlocked}`,
+          `Adhan sound: ${status.adhanSoundURI ?? 'None'}`,
+          `Iqama sound: ${status.iqamaSoundURI ?? 'None'}`,
+        ].join('\n'),
+      );
+    } catch (error) {
+      Alert.alert(
+        t.error,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  };
+
+  const handleSoundTest = async (kind: 'adhan' | 'iqama') => {
+    try {
+      await displayPrayerSoundTest(
+        kind,
+        kind === 'adhan' ? t.adhanNotificationTitle : t.iqamaNotificationTitle,
+        kind === 'adhan' ? t.testAdhanSound : t.testIqamaSound,
+      );
+    } catch (error) {
+      Alert.alert(
+        t.error,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+  };
 
   // Sync local state when store changes (only if not dirty)
   useEffect(() => {
@@ -210,6 +261,34 @@ export const PrayerSettingsScreen = () => {
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 },
     );
+  };
+
+  const handleShowRecentNotificationEvents = () => {
+    const entries = getPrayerDiagnostics().slice(-10).reverse();
+
+    if (entries.length === 0) {
+      Alert.alert(t.recentNotificationEvents, 'No events recorded');
+      return;
+    }
+
+    const message = entries
+      .map(entry => {
+        const time = new Date(entry.recordedAt).toLocaleString();
+        const delay =
+          entry.delayMs === undefined ? '' : `, delay=${entry.delayMs}ms`;
+
+        const pending =
+          entry.pendingPrayerCount === undefined
+            ? ''
+            : `, pending=${entry.pendingPrayerCount}`;
+
+        const error = entry.message ? `\n${entry.message}` : '';
+
+        return `${time}\n${entry.type}${delay}${pending}${error}`;
+      })
+      .join('\n\n');
+
+    Alert.alert(t.recentNotificationEvents, message);
   };
 
   const methods: CalculationMethod[] = [
@@ -532,6 +611,117 @@ export const PrayerSettingsScreen = () => {
         )}
       </SettingsSection>
 
+      <SettingsSection title={t.notificationDiagnostics}>
+        <TouchableOpacity
+          style={[
+            styles.diagnosticButton,
+            { backgroundColor: colors.secondary },
+          ]}
+          onPress={handleShowRecentNotificationEvents}
+        >
+          <Text
+            style={[
+              styles.diagnosticButtonText,
+              { fontFamily: typography.fontFamily.medium },
+            ]}
+          >
+            {t.recentNotificationEvents}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.diagnosticButton,
+            { backgroundColor: colors.secondary },
+          ]}
+          onPress={() => void handleShowNotificationStatus()}
+        >
+          <Text
+            style={[
+              styles.diagnosticButtonText,
+              { fontFamily: typography.fontFamily.medium },
+            ]}
+          >
+            {t.notificationStatus}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.diagnosticButton,
+            { backgroundColor: colors.secondary },
+          ]}
+          onPress={() => void handleSoundTest('adhan')}
+        >
+          <Text
+            style={[
+              styles.diagnosticButtonText,
+              { fontFamily: typography.fontFamily.medium },
+            ]}
+          >
+            {t.testAdhanSound}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.diagnosticButton,
+            { backgroundColor: colors.secondary },
+          ]}
+          onPress={() => void handleSoundTest('iqama')}
+        >
+          <Text
+            style={[
+              styles.diagnosticButtonText,
+              { fontFamily: typography.fontFamily.medium },
+            ]}
+          >
+            {t.testIqamaSound}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.diagnosticButton, { backgroundColor: colors.primary }]}
+          onPress={() => void openPrayerAlarmSettings()}
+        >
+          <Text
+            style={[
+              styles.diagnosticButtonText,
+              { fontFamily: typography.fontFamily.medium },
+            ]}
+          >
+            {t.alarmSettings}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.diagnosticButton, { backgroundColor: colors.primary }]}
+          onPress={() => void openPrayerChannelSettings('adhan')}
+        >
+          <Text
+            style={[
+              styles.diagnosticButtonText,
+              { fontFamily: typography.fontFamily.medium },
+            ]}
+          >
+            {t.adhanChannelSettings}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.diagnosticButton, { backgroundColor: colors.primary }]}
+          onPress={() => void openPrayerChannelSettings('iqama')}
+        >
+          <Text
+            style={[
+              styles.diagnosticButtonText,
+              { fontFamily: typography.fontFamily.medium },
+            ]}
+          >
+            {t.iqamaChannelSettings}
+          </Text>
+        </TouchableOpacity>
+      </SettingsSection>
+
       {/* Save Button */}
       <View style={{ padding: 20 }}>
         <TouchableOpacity
@@ -814,5 +1004,16 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  diagnosticButton: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  diagnosticButtonText: {
+    color: '#FFF',
+    fontSize: 15,
+    textAlign: 'center',
   },
 });
